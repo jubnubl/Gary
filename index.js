@@ -2,7 +2,7 @@ const mineflayer = require('mineflayer')
 
 function createBot() {
     const bot = mineflayer.createBot({
-        host: 'Bottleofjews.aternos.me', 
+        host: '19Saints.aternos.me', 
         port: 57341,           
         username: 'Gary',   
         version: '1.21.1' // Adjusted to standard 1.21.1 (check if you meant 1.21.1)
