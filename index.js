@@ -5,19 +5,31 @@ function createBot() {
         host: '19Saints.aternos.me', 
         port: 16201,           
         username: 'Gary',   
-        version: '1.21.1'
+        version: '1.21.1',
+        hideErrors: false // Shows more detail if something breaks
+    })
+
+    // FIX: Automatically accept resource packs (common kick reason on 1.21+)
+    bot.on('resource_pack', () => {
+        bot.acceptResourcePack()
     })
 
     bot.on('login', () => {
         console.log('A SCOTTISH-MAN HAS ARRIVED - Your Son, Gary')
     })
 
-    // Using 'once' ensures the movement loop starts correctly after everything loads
+    // See exactly WHY Gary is getting kicked
+    bot.on('kicked', (reason) => {
+        console.log('Gary was kicked! Reason:', reason)
+    })
+
     bot.once('spawn', () => {
         console.log('Gary is on the field and movin, lad!')
 
         const wander = () => {
-            bot.clearControlStates() // Reset before picking a new move
+            if (!bot.entity) return // Stop if bot isn't spawned
+            
+            bot.clearControlStates() 
 
             const actions = ['forward', 'left', 'right']
             const randomAction = actions[Math.floor(Math.random() * actions.length)]
@@ -25,7 +37,6 @@ function createBot() {
             bot.setControlState(randomAction, true)
             if (Math.random() > 0.6) bot.setControlState('jump', true)
 
-            // Move for 1.5 to 3.5 seconds
             setTimeout(() => {
                 bot.clearControlStates()
                 
@@ -34,24 +45,21 @@ function createBot() {
                 bot.look(yaw, pitch)
                 bot.swingArm('right')
 
-                // Wait 3 to 8 seconds before next move
                 setTimeout(wander, Math.random() * 5000 + 3000)
             }, Math.random() * 2000 + 1500)
         }
-
-        // Kick off the loop
         wander()
     })
 
-    bot.on('end', (reason) => {
-        console.log(`Gary is down lad (${reason}), keep coverin us till he is awake.. restarting in 5s`)
-        setTimeout(createBot, 5000) 
-    })
+    // Clean restart logic to avoid double-spawning
+    const restart = (reason) => {
+        console.log(`Gary is down (${reason}). Restarting in 15s...`)
+        bot.removeAllListeners() 
+        setTimeout(createBot, 15000)
+    }
 
-    bot.on('error', (err) => {
-        console.log('Aye Lad, there seems to be a problem on the deck, ERROR:', err.message)
-        setTimeout(createBot, 5000)
-    })
+    bot.on('end', () => restart('Connection Ended'))
+    bot.on('error', (err) => restart(`Error: ${err.message}`))
 }
 
 createBot()
