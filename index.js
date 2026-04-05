@@ -5,61 +5,63 @@ function createBot() {
         host: '19Saints.aternos.me', 
         port: 16201,           
         username: 'Gary',   
-        version: '1.21.1',
-        hideErrors: false // Shows more detail if something breaks
+        version: '1.21.1'
     })
 
-    // FIX: Automatically accept resource packs (common kick reason on 1.21+)
-    bot.on('resource_pack', () => {
-        bot.acceptResourcePack()
-    })
+    bot.on('resource_pack', () => bot.acceptResourcePack())
 
     bot.on('login', () => {
         console.log('A SCOTTISH-MAN HAS ARRIVED - Your Son, Gary')
     })
 
-    // See exactly WHY Gary is getting kicked
-    bot.on('kicked', (reason) => {
-        console.log('Gary was kicked! Reason:', reason)
-    })
-
-    bot.once('spawn', () => {
+    bot.once('spawn', async () => {
+        console.log('Gary is on the field, waitin for the world to wake up...')
+        
+        // SPIGOT FIX: Wait for chunks to load before moving
+        // If Gary moves into an empty chunk, Spigot will freeze him.
+        await bot.waitForChunksToLoad()
+        
         console.log('Gary is on the field and movin, lad!')
 
-        const wander = () => {
-            if (!bot.entity) return // Stop if bot isn't spawned
-            
-            bot.clearControlStates() 
-
-            const actions = ['forward', 'left', 'right']
-            const randomAction = actions[Math.floor(Math.random() * actions.length)]
-            
-            bot.setControlState(randomAction, true)
-            if (Math.random() > 0.6) bot.setControlState('jump', true)
-
-            setTimeout(() => {
-                bot.clearControlStates()
-                
-                const yaw = Math.random() * Math.PI * 2
-                const pitch = (Math.random() - 0.5) * (Math.PI / 2)
-                bot.look(yaw, pitch)
-                bot.swingArm('right')
-
-                setTimeout(wander, Math.random() * 5000 + 3000)
-            }, Math.random() * 2000 + 1500)
-        }
-        wander()
+        // PHYSICS KICKSTART: Forces Spigot to acknowledge Gary is active
+        bot.setControlState('jump', true)
+        setTimeout(() => bot.setControlState('jump', false), 500)
+        
+        startWandering(bot)
     })
 
-    // Clean restart logic to avoid double-spawning
     const restart = (reason) => {
-        console.log(`Gary is down (${reason}). Restarting in 15s...`)
-        bot.removeAllListeners() 
-        setTimeout(createBot, 15000)
+        console.log(`Gary is down lad (${reason}), keep coverin us till he is awake.. restarting in 5s`)
+        bot.quit()
+        bot.removeAllListeners()
+        setTimeout(createBot, 5000)
     }
 
-    bot.on('end', () => restart('Connection Ended'))
-    bot.on('error', (err) => restart(`Error: ${err.message}`))
+    bot.on('kicked', (reason) => restart(`Kicked: ${reason}`))
+    bot.on('error', (err) => restart(`Aye Lad, error: ${err.message}`))
+    bot.on('end', () => restart('Lost connection'))
+}
+
+function startWandering(bot) {
+    const wander = () => {
+        if (!bot.entity) return
+        
+        bot.clearControlStates()
+        
+        // Spigot needs to see the bot "look" before it "moves"
+        const yaw = Math.random() * Math.PI * 2
+        bot.look(yaw, 0, true) // The 'true' forces an immediate packet
+        
+        bot.setControlState('forward', true)
+        bot.swingArm('right')
+
+        setTimeout(() => {
+            bot.clearControlStates()
+            // Random pause so he doesn't look like a machine
+            setTimeout(wander, Math.random() * 3000 + 2000)
+        }, 2000)
+    }
+    wander()
 }
 
 createBot()
