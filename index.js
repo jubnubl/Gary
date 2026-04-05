@@ -14,61 +14,43 @@ function createBot() {
         console.log('A SCOTTISH-MAN HAS ARRIVED - Your Son, Gary')
     })
 
-    bot.once('spawn', async () => {
-        await bot.waitForChunksToLoad()
+    bot.on('spawn', () => {
         console.log('Gary is on the field and movin, lad!')
         
-        // Force an initial jump to break any "stuck-in-block" detection
-        bot.setControlState('jump', true)
-        setTimeout(() => bot.setControlState('jump', false), 500)
+        // Aterbot's trick: Use a looping interval for random actions
+        const loop = setInterval(() => {
+            if (!bot.entity) return clearInterval(loop)
 
-        startWalking(bot)
+            const actions = ['forward', 'back', 'left', 'right', 'jump']
+            const randomAction = actions[Math.floor(Math.random() * actions.length)]
+            
+            // Aterbot logic: 50% chance to sprint to break the Spigot freeze
+            const isSprinting = Math.random() < 0.5
+            
+            bot.setControlState('sprint', isSprinting)
+            bot.setControlState(randomAction, true)
+            bot.swingArm('right')
+
+            // Move for a very short burst (1 second) then reset
+            setTimeout(() => {
+                bot.setControlState(randomAction, false)
+                bot.setControlState('sprint', false)
+            }, 1000)
+
+        }, 5000) // Triggers every 5 seconds
     })
 
+    // Aterbot's robust reconnection logic
     const restart = (reason) => {
-        console.log(`Gary is down lad (${reason}).. restarting in 5s`)
+        console.log(`Gary is down lad (${reason}).. restarting in 15s`)
         bot.quit()
         bot.removeAllListeners()
-        setTimeout(createBot, 5000)
+        setTimeout(createBot, 15000) 
     }
 
-    bot.on('kicked', (reason) => restart(`Kicked: ${reason}`))
-    bot.on('error', (err) => restart(`Error: ${err.message}`))
-    bot.on('end', () => restart('Lost connection'))
-}
-
-function startWalking(bot) {
-    const move = () => {
-        if (!bot.entity) return
-
-        // 1. Pick a random direction (Yaw)
-        const yaw = Math.random() * Math.PI * 2
-        bot.look(yaw, 0, true)
-
-        // 2. RAW PHYSICS INJECTION: This bypasses standard "forward" states
-        // We set the velocity directly so Spigot can't ignore the movement
-        const interval = setInterval(() => {
-            if (!bot.entity) return clearInterval(interval)
-            
-            // Calculate velocity based on Gary's current look direction
-            const speed = 0.15 
-            bot.entity.velocity.x = -Math.sin(yaw) * speed
-            bot.entity.velocity.z = -Math.cos(yaw) * speed
-            
-            bot.swingArm('right')
-        }, 50) // Update every 50ms (1 Minecraft tick)
-
-        // 3. Walk for 3 seconds, then clear velocity and wait
-        setTimeout(() => {
-            clearInterval(interval)
-            if (bot.entity) {
-                bot.entity.velocity.x = 0
-                bot.entity.velocity.z = 0
-            }
-            setTimeout(move, Math.random() * 5000 + 2000)
-        }, 3000)
-    }
-    move()
+    bot.on('kicked', (reason) => restart(reason))
+    bot.on('error', (err) => restart(err.message))
+    bot.on('end', () => restart('Connection Ended'))
 }
 
 createBot()
