@@ -1,0 +1,12 @@
+{
+  "client": {
+    "host": "19Saints.aternos.me",
+    "port": 16201,
+    "username": "Gary"
+  },
+  "action": {
+    "commands": ["forward", "back", "left", "right", "jump"],
+    "holdDuration": 5000,
+    "retryDelay": 15000
+  }
+}
